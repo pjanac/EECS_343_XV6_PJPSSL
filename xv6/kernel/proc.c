@@ -445,7 +445,7 @@ procdump(void)
 }
 
 int
-getprocs(struct ProcessInfo processInfoTable[]){
+getprocs(void){
   return 5;
 }
 

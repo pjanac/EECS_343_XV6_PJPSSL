@@ -25,7 +25,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int getprocs(struct ProcessInfo processInfoTable[]);
+int getprocs(void);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);
