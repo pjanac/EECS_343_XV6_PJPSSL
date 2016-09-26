@@ -445,8 +445,8 @@ procdump(void)
 }
 
 int
-getprocs(void){
-  return 5;
+getprocs(int num){
+  return num;
 }
 
 
