@@ -6,9 +6,9 @@
 void
 ps(void)
 {
-	//struct processInfo *s;
-	//int numProcessesGotten = getprocs(s);
-	int numProcessesGotten = getprocs(600);
+	struct ProcessInfo table;
+	int numProcessesGotten = getprocs(&table);
+	//int numProcessesGotten = getprocs(600);
 	printf(1,"number of processes %d", numProcessesGotten);
 }
 

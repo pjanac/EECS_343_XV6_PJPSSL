@@ -445,8 +445,8 @@ procdump(void)
 }
 
 int
-getprocs(int num){
-  return num;
+getprocs(struct ProcessInfo *table){
+  return -70;
 }
 
 

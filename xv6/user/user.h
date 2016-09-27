@@ -2,6 +2,7 @@
 #define _USER_H_
 
 struct stat;
+struct ProcessInfo;
 
 // system calls
 int fork(void);
@@ -25,7 +26,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int getprocs(int);
+int getprocs(struct ProcessInfo*);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);
