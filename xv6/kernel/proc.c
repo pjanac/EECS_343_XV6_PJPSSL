@@ -445,8 +445,29 @@ procdump(void)
 }
 
 int
-getprocs(struct ProcessInfo processInfoTable[]){
-  return 5;
+getprocs(struct ProcessInfo *table){
+  int numProcs = 0;
+  int i;
+  for (i=0; i < NPROC; i++){
+    if (ptable.proc[i].state!=UNUSED){
+      table->pid = ptable.proc[i].pid;
+      table->ppid = ptable.proc[i].parent->pid;
+      table->sz = ptable.proc[i].sz;
+      table->state = ptable.proc[i].state;
+      strncpy(table->name, ptable.proc[i].name, 16);
+    
+      //table += sizeof(struct ProcessInfo);
+     /* cprintf("%d", sizeof(struct ProcessInfo));
+       cprintf("\n");
+       cprintf("%d", sizeof(table));
+        cprintf("\n"); */
+      //table += sizeof(struct ProcessInfo);
+       //table++;
+
+      numProcs++;
+    }
+  }
+  return numProcs;
 }
 
 
