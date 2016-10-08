@@ -20,6 +20,15 @@ ps(void)
 int 
 main(void)
 {
-	ps();
+//int *p=0;
+//int i=0;
+//printf(1,"go fuck userself %d %d",i);
+
+
+//int *p=0;
+//printf(1, "%x", *p);
+
+
+       	ps();
 	exit();
 }

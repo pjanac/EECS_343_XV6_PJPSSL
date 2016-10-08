@@ -13,6 +13,7 @@ extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
 
+extern int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
 void
 tvinit(void)
 {
@@ -34,6 +35,11 @@ idtinit(void)
 void
 trap(struct trapframe *tf)
 {
+
+  if(tf->trapno == T_PGFLT)
+  {
+    cprintf("We got a page fault at %x\n",rcr2());
+   }
   if(tf->trapno == T_SYSCALL){
     if(proc->killed)
       exit();
@@ -43,6 +49,22 @@ trap(struct trapframe *tf)
       exit();
     return;
   }
+
+
+// if(tf->trapno == T_PGFLT) {
+    // alloc PA
+  //     char * mem;
+  //      mem = kalloc();
+   //   if(mem == 0){
+     // cprintf("alloc lazy page, out of memory\n");
+       //return ;
+         //  }
+     // memset(mem, 0, PGSIZE);
+     // create PTE and map page to PGDIR
+     //uint a = PGROUNDDOWN(rcr2());
+  //  mappages(proc->pgdir, (char*) a, PGSIZE, mem, PTE_W | PTE_U);
+   // return ;
+     //  }
 
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
@@ -77,6 +99,18 @@ trap(struct trapframe *tf)
     break;
    
   default:
+//	if (tf->trapno == T_PGFLT){ 	
+//	char *mem;
+//	uint a;
+//	a = PGROUNDDOWN(rcr2());
+//	uint newsz = proc->sz;
+//	for(; a < newsz; a += PGSIZE){
+//	mem = kalloc();
+//	memset(mem, 0, PGSIZE);
+//	mappages(proc->pgdir, (char*)a, PGSIZE, v2p(mem), PTE_W|PTE_U);
+//	}
+//	return;
+ //	}
     if(proc == 0 || (tf->cs&3) == 0){
       // In kernel, it must be our mistake.
       cprintf("unexpected trap %d from cpu %d eip %x (cr2=0x%x)\n",
