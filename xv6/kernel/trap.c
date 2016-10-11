@@ -36,10 +36,10 @@ void
 trap(struct trapframe *tf)
 {
 
-  if(tf->trapno == T_PGFLT)
-  {
-    cprintf("We got a page fault at %x\n",rcr2());
-   }
+//  if(tf->trapno == T_PGFLT)
+//  {
+   // cprintf("We got a page fault at %x\n",rcr2());
+  // }
   if(tf->trapno == T_SYSCALL){
     if(proc->killed)
       exit();
