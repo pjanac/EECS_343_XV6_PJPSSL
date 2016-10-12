@@ -98,3 +98,11 @@ int sys_getprocs(void)
   return getprocs(table);
 }
 
+int sys_shmem_access(void){
+  return 0;
+}
+
+int sys_shmem_count(void){
+  return 0;
+}
+

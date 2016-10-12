@@ -469,4 +469,28 @@ getprocs(struct ProcessInfo *table){
   return numProcs;
 }
 
+// SHMEM_ACCESS: the kernel will make a shared page available to the process
+
+// INPUT: page_number can be 0 to 3, allowing up to 4 different pages to be shared
+// The four shared pages, if and when they are requested by a process, 
+
+// should be mapped to the highest four pages in the calling process’s virtual address space. 
+void*
+shmem_access(int page_number){
+
+  // RETURN
+  //The syscall will return the virtual address of the shared page. 
+  //If a process calls this syscall twice with the same argument, the syscall should recognize that this process has already mapped this shared page and simply return the virtual address again.
+  // indicate failure by returning NULL.
+  return 0;
+}
+
+int
+shmem_count(int page_number){
+  // RETURN
+  //returns the number of processes that are currently sharing the shared page specified by the page_number argument.
+  // indicate failure by returning -1
+  return 0;
+}
+
 
