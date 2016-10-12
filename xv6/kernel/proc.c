@@ -475,14 +475,60 @@ getprocs(struct ProcessInfo *table){
 // The four shared pages, if and when they are requested by a process, 
 
 // should be mapped to the highest four pages in the calling process’s virtual address space. 
+
+/*
+proctable
+
+walkpgdir > return addr of pte in pagetable
+// Return the address of the PTE in page table pgdir
+// that corresponds to linear address va.
+
+allocuvm
+// Allocate page tables and physical memory to grow process from oldsz to
+// newsz, which need not be page aligned.
+
+deallocuvm
+// opposite of allocuvm 
+
+mappages
+// Create PTEs for linear addresses starting at la that refer to
+// physical addresses starting at pa. la and size might not
+// be page-aligned.
+
+*/
 void*
 shmem_access(int page_number){
+
+  // allocate a new physical memory page 
+// allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
+
+  // get pgdir from current process 
+  pde_t* pgdir;
+  pgdir = proc->pgdir;
+
+  // determine virtual address of the page
+  uint virtual_addr = USERTOP - (page_number  + 1) * PGSIZE;
+
+  uint sz;
+  sz = allocuvm(pgdir, virtual_addr, PGSIZE);  // would just return PGSIZE, if working....
+  //***************************************************
+
+  // map a virtual memory page to the physical address of the physical page
+
+  // pass our virtual addr to mappages 
+  //mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)   // returns -1 if fails, 0 if successful
+  
+  // this creates PTEs 
+  char *mem;
+  mem = kalloc();
+
+  mappages(pgdir, virtual_addr, PGSIZE, PADDR(mem),PTE_W|PTE_U); // using correct flags? 
 
   // RETURN
   //The syscall will return the virtual address of the shared page. 
   //If a process calls this syscall twice with the same argument, the syscall should recognize that this process has already mapped this shared page and simply return the virtual address again.
   // indicate failure by returning NULL.
-  return 0;
+  return virtual_addr;
 }
 
 int
