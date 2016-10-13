@@ -289,13 +289,16 @@ freevm(pde_t *pgdir)
   deallocuvm(pgdir, USERTOP, 0);
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P)
+      // freeing physical pages that hold page tables 
       kfree((char*)PTE_ADDR(pgdir[i]));
   }
+  // freeing physical page that held page directory 
   kfree((char*)pgdir);
 }
 
 // Given a parent process's page table, create a copy
 // of it for a child.
+// copy user virtual memory 
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
 {
@@ -306,7 +309,7 @@ copyuvm(pde_t *pgdir, uint sz)
 
   if((d = setupkvm()) == 0)
     return 0;
-  for(i = PGSIZE; i < sz + PGSIZE; i += PGSIZE){
+  for(i = PGSIZE; i < sz + PGSIZE; i += PGSIZE){  // i = virtual address 
     if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))

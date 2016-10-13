@@ -99,10 +99,10 @@ int sys_getprocs(void)
 }
 
 int sys_shmem_access(void){
-  return 0;
+  return 0; // need to call shmem_access here 
 }
 
 int sys_shmem_count(void){
-  return 0;
+  return 0;  // need to call shmem_count here 
 }
 
