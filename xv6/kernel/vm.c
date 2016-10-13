@@ -10,6 +10,18 @@ extern char data[];  // defined in data.S
 
 static pde_t *kpgdir;  // for use in scheduler()
 
+
+// TODO 
+//// Create 2 global arrays here SchmemTable 
+// datastructure keep track physical addresses of shared pages, array 
+// Entry 0 (pagenum 0) of the page to hold physical addr of page 
+// Does this also hold reference counts? Or a separate structure?
+
+uint SchmemTable[]= {0};
+int referenceCounts[] = {0};
+
+
+
 // Allocate one page table for the machine for the kernel address
 // space for scheduler processes.
 void
@@ -231,7 +243,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   char *mem;
   uint a;
 
-  if(newsz > USERTOP - PGSIZE )
+  if(newsz > USERTOP - PGSIZE - SHAREDPGSIZE) 
     return 0;
   if(newsz < oldsz)
     return oldsz;
@@ -277,6 +289,31 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   return newsz;
 }
 
+
+// TODO !!!!!!!!!!!!!!
+int
+deallocUserSharedPages(pde_t *pgdir, uint oldsz, uint newsz)
+{
+  pte_t *pte;
+  uint a, pa;
+
+  if(newsz >= oldsz)
+    return oldsz;
+
+  a = PGROUNDUP(newsz);
+  for(; a  < oldsz; a += PGSIZE){
+    pte = walkpgdir(pgdir, (char*)a, 0);
+    if(pte && (*pte & PTE_P) != 0){
+      pa = PTE_ADDR(*pte);
+      if(pa == 0)
+        panic("kfree");
+      kfree((char*)pa);
+      *pte = 0;
+    }
+  }
+  return newsz;
+}
+
 // Free a page table and all the physical memory pages
 // in the user part.
 void
@@ -289,16 +326,14 @@ freevm(pde_t *pgdir)
   deallocuvm(pgdir, USERTOP, 0);
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P)
-      // freeing physical pages that hold page tables 
-      kfree((char*)PTE_ADDR(pgdir[i]));
+      kfree((char*)PTE_ADDR(pgdir[i]));     // freeing physical pages that hold page tables 
   }
-  // freeing physical page that held page directory 
-  kfree((char*)pgdir);
+  kfree((char*)pgdir);   // freeing physical page that held page directory 
 }
 
 // Given a parent process's page table, create a copy
 // of it for a child.
-// copy user virtual memory 
+// copy user virtual memory
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
 {
@@ -309,7 +344,7 @@ copyuvm(pde_t *pgdir, uint sz)
 
   if((d = setupkvm()) == 0)
     return 0;
-  for(i = PGSIZE; i < sz + PGSIZE; i += PGSIZE){  // i = virtual address 
+  for(i = PGSIZE; i < sz + PGSIZE; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
@@ -367,3 +402,141 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   }
   return 0;
 }
+
+// SHMEM_ACCESS: the kernel will make a shared page available to the process
+
+// INPUT: page_number can be 0 to 3, allowing up to 4 different pages to be shared
+// The four shared pages, if and when they are requested by a process, 
+
+// should be mapped to the highest four pages in the calling process’s virtual address space. 
+
+/*
+proctable
+
+walkpgdir > return addr of pte in pagetable
+// Return the address of the PTE in page table pgdir
+// that corresponds to linear address va.
+
+allocuvm
+// Allocate page tables and physical memory to grow process from oldsz to
+// newsz, which need not be page aligned.
+
+
+deallocuvm  (LAST STEPS- memory leaks if time)
+// opposite of allocuvm 
+// much of the work of cleaning up user process's memory pages 
+// Doesn't clean up shared pages....
+// deallocUserSharedPages > modeled after deallocuvm 
+////// updating reference counts, and if necessary, freeing physical shared pages 
+
+mappages
+// Create PTEs for linear addresses starting at la that refer to
+// physical addresses starting at pa. la and size might not
+// be page-aligned.
+// read va and be directed to pa
+
+// datastructure keep track physical addresses of shared pages, array 
+// Entry 0 of the page to hold physical addr of page 
+
+// Use synchronization
+// Locks - need? potentially saved by parent waiting > see test cases 
+
+*/
+void*
+shmem_access(int page_number){
+  if (page_number < 0 || page_number > 3)
+     return (void*)0;
+
+   uint virtual_addr;
+  virtual_addr = USERTOP - SHAREDPGSIZE + page_number * PGSIZE;
+
+   if (referenceCounts[page_number] == 0){   // CASE 1: page_number shared memory hasn't been created yet 
+    char *mem;
+
+    // this creates PTEs  in physical memory 
+      mem = kalloc();
+      if(mem == 0){
+        cprintf("allocuvm out of memory\n");
+      //  deallocuvm(pgdir, newsz, oldsz);
+        return 0;
+      }
+      memset(mem, 0, PGSIZE);
+      mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+      SchmemTable[page_number] = PADDR(mem);
+      referenceCounts[page_number]++;
+      return (void*)virtual_addr;
+  } 
+
+  // CASE 2: the same process calls shmem_access with the same page_number more than once 
+
+      pde_t *pde;
+      //pte_t *pgtab;
+
+      pde = &(proc->pgdir)[PDX(virtual_addr)];   // WATCH THE SYNTAX HERE!!!!!!!!!!!!!!!!
+      if(*pde & PTE_P){  // if the page directory entry exists and the present bit is 1
+        //pgtab = (pte_t*)PTE_ADDR(*pde);
+        return (void*)SchmemTable[page_number];
+      }
+
+// CASE 3: page_number has already been created by a different process, but another process wants access 
+      int updatePageTable;
+      updatePageTable = mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PTE_ADDR(virtual_addr), PTE_W|PTE_U);
+
+      if (updatePageTable == -1){
+        return (void*)0;
+      }
+
+      referenceCounts[page_number]++;
+
+      return (void*)SchmemTable[page_number];
+  
+
+    // first check if a process called this syscall twice with the same argument
+  // return the same virtual address again
+  // IMPLEMENTATION: Check the process's page directory and page tables 
+  // Is there a mapping to a shared page in the virtual address space? 
+
+  // walkpgdir 
+  // mappages 
+  // check present bit (last flag of entry)
+   // must be 1 in page directory and page table entries 
+
+//***************************************************
+  
+
+  //uint sz;
+  //sz = allocuvm(pgdir, virtual_addr, PGSIZE);  // would just return PGSIZE, if working....
+  // if sz == 0 there was an error 
+  //***************************************************
+
+  // map a virtual memory page to the physical address of the physical page
+
+  // pass our virtual addr to mappages 
+  //mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)   // returns -1 if fails, 0 if successful
+  
+
+// increment reference count from 0 to 1, multiple access to this page
+  // use this address to fill in global array 
+
+ // mappages(pgdir, virtual_addr, PGSIZE, PADDR(mem),PTE_W|PTE_U); // using correct flags? 
+
+  // RETURN
+  //The syscall will return the virtual address of the shared page. 
+  //If a process calls this syscall twice with the same argument, the syscall should recognize that this process has already mapped this shared page and simply return the virtual address again.
+  // indicate failure by returning NULL.
+
+  // return virtual_addr here 
+
+}
+
+int
+shmem_count(int page_number){
+  if (page_number < 0 || page_number > 3)
+    return -1;
+  // RETURN
+  //returns the number of processes that are currently sharing the shared page specified by the page_number argument.
+  // indicate failure by returning -1
+  // access the reference array
+  return referenceCounts[page_number];
+}
+

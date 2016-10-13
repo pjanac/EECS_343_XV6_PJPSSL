@@ -117,6 +117,7 @@ struct segdesc {
 #define NPTENTRIES	1024		// page table entries per page table
 
 #define PGSIZE		4096		// bytes mapped by a page
+#define SHAREDPGSIZE  16384   // keep last 4 pages free for shared memory 
 #define PGSHIFT		12		// log2(PGSIZE)
 
 #define PTXSHIFT	12		// offset of PTX in a linear address
