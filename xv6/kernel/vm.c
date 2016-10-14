@@ -11,16 +11,12 @@ extern char data[];  // defined in data.S
 static pde_t *kpgdir;  // for use in scheduler()
 
 
-// TODO 
-//// Create 2 global arrays here SchmemTable 
-// datastructure keep track physical addresses of shared pages, array 
-// Entry 0 (pagenum 0) of the page to hold physical addr of page 
-// Does this also hold reference counts? Or a separate structure?
+typedef struct Stable{
+  uint table[4];
+  int referenceCounts[4];
+} Stable;
 
-uint SchmemTable[]= {0};
-int referenceCounts[] = {0};
-
-
+Stable Schmem = {.table = {0} , .referenceCounts = {0}};
 
 // Allocate one page table for the machine for the kernel address
 // space for scheduler processes.
@@ -294,6 +290,11 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 int
 deallocUserSharedPages(pde_t *pgdir, uint oldsz, uint newsz)
 {
+
+
+  // Call freevm in here somewhere 
+
+
   pte_t *pte;
   uint a, pa;
 
@@ -450,7 +451,7 @@ shmem_access(int page_number){
    uint virtual_addr;
   virtual_addr = USERTOP - SHAREDPGSIZE + page_number * PGSIZE;
 
-   if (referenceCounts[page_number] == 0){   // CASE 1: page_number shared memory hasn't been created yet 
+   if (Schmem.referenceCounts[page_number] == 0){   // CASE 1: page_number shared memory hasn't been created yet 
     char *mem;
 
     // this creates PTEs  in physical memory 
@@ -462,21 +463,32 @@ shmem_access(int page_number){
       }
       memset(mem, 0, PGSIZE);
       mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PADDR(mem), PTE_W|PTE_U);
-      SchmemTable[page_number] = PADDR(mem);
-      referenceCounts[page_number]++;
+      Schmem.table[page_number] = PADDR(mem);
+      Schmem.referenceCounts[page_number]++;
       return (void*)virtual_addr;
   } 
 
   // CASE 2: the same process calls shmem_access with the same page_number more than once 
+    pte_t *pte;
+    pte = walkpgdir(proc->pgdir,(void*)virtual_addr, 0);   // pte doesn't exist > equal to 0
 
-      pde_t *pde;
-      //pte_t *pgtab;
+    if (!pte && (*pte & PTE_P)){
+      return (void*)Schmem.table[page_number];
+    }
 
-      pde = &(proc->pgdir)[PDX(virtual_addr)];   // WATCH THE SYNTAX HERE!!!!!!!!!!!!!!!!
-      if(*pde & PTE_P){  // if the page directory entry exists and the present bit is 1
-        //pgtab = (pte_t*)PTE_ADDR(*pde);
-        return (void*)SchmemTable[page_number];
-      }
+
+
+// if(*pde & PTE_P){
+//     pgtab = (pte_t*)PTE_ADDR(*pde);
+//     &pgtab[PTX(va)];
+
+
+
+//       pde = &(proc->pgdir)[PDX(virtual_addr)];   // WATCH THE SYNTAX HERE!!!!!!!!!!!!!!!!
+//       if(*pde & PTE_P){  // if the page directory entry exists and the present bit is 1
+//         //pgtab = (pte_t*)PTE_ADDR(*pde);
+//         return (void*)Schmem.table[page_number];
+//       }
 
 // CASE 3: page_number has already been created by a different process, but another process wants access 
       int updatePageTable;
@@ -486,9 +498,9 @@ shmem_access(int page_number){
         return (void*)0;
       }
 
-      referenceCounts[page_number]++;
+      Schmem.referenceCounts[page_number]++;
 
-      return (void*)SchmemTable[page_number];
+      return (void*)Schmem.table[page_number];
   
 
     // first check if a process called this syscall twice with the same argument
@@ -537,6 +549,6 @@ shmem_count(int page_number){
   //returns the number of processes that are currently sharing the shared page specified by the page_number argument.
   // indicate failure by returning -1
   // access the reference array
-  return referenceCounts[page_number];
+  return Schmem.referenceCounts[page_number];
 }
 

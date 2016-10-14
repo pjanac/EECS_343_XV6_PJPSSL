@@ -451,28 +451,31 @@ procdump(void)
   }
 }
 
-int
-getprocs(struct ProcessInfo *table){
-  int numProcs = 0;
-  int i;
-  int count = 0;
-  for (i=0; i < NPROC; i++){
-    if (ptable.proc[i].state!=UNUSED){
-      table[count].pid = ptable.proc[i].pid;
-      if(ptable.proc[i].parent == NULL) {
-        table[count].ppid = -1;
-      }
-      else {
-        table[count].ppid = ptable.proc[i].parent->pid;
-      }
-      table[count].sz = ptable.proc[i].sz;
-      table[count].state = ptable.proc[i].state;
-      strncpy(table[count].name, ptable.proc[i].name, 16);
+// int
+// getprocs(struct ProcessInfo *table){
+//   int numProcs = 0;
+//   int i;
+//   int count = 0;
+//   for (i=0; i < NPROC; i++){
+//     if (ptable.proc[i].state!=UNUSED){
+//       table[count].pid = ptable.proc[i].pid;
+//       if(ptable.proc[i].parent == NULL) {
+//         table[count].ppid = -1;
+//       }
+//       else {
+//         table[count].ppid = ptable.proc[i].parent->pid;
+//       }
+//       table[count].sz = ptable.proc[i].sz;
+//       table[count].state = ptable.proc[i].state;
+//       strncpy(table[count].name, ptable.proc[i].name, 16);
   
-      count++;
-      numProcs++;
-    }
-  }
-  return numProcs;
-}
+//       count++;
+//       numProcs++;
+//     }
+//   }
+//   return numProcs;
+// }
+
+
+
 

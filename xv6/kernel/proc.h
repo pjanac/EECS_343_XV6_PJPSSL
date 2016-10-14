@@ -13,8 +13,8 @@
 
 //his also hold reference counts? Or a separate structure?
 
-extern uint SchmemTable[4];
-extern int referenceCounts[4];
+//extern uint SchmemTable[4];
+//extern int referenceCounts[4];
 // Per-CPU state
 
 struct cpu {
