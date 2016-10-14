@@ -175,6 +175,15 @@ int 			shmem_count(int);
 int             getReferenceCount(int);
 void*           getSharedPagePA(int);
 
+// tests
+// void            whenRequestingSharedMemory_ValidAddressIsReturned(void);
+// void            afterRequestingSharedMemory_countReturns1(void);
+// void            whenSharingAPage_ParentSeesChangesMadeByChild(void);
+// void            whenProcessExits_SharedPageIsFreed(void);
+// void            whenSharingAPageBetween2Processes_countReturns2(void);
+// void            whenProcessExists_countReturns0(void);
+// void            beforeRequestingSharedMemory_countReturns0(void);
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
 

@@ -26,7 +26,9 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int getprocs(struct ProcessInfo*);
+void* shmem_access(int);
+int shmem_count(int); 
+//int getprocs(struct ProcessInfo*);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);
