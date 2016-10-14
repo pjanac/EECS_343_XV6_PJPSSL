@@ -315,6 +315,10 @@ deallocUserSharedPages(pde_t *pgdir, uint oldsz, uint newsz)
   return newsz;
 }
 
+// When deallocuvm calls kfree(), it is freeing the physical pages that the process was using for "ordinary" memory purposes.
+// Just a little later, when freevm calls kfree(), it is freeing the physical pages that hold the page tables that were being used by the process. 
+//  Finally, when freevm calls kfree((char*)pgdir); it is freeing the physical page that held the page directory that was being used by the process.
+
 // Free a page table and all the physical memory pages
 // in the user part.
 void
@@ -324,13 +328,44 @@ freevm(pde_t *pgdir)
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
-  deallocuvm(pgdir, USERTOP, 0);
+
+
+  uint virtual_addr;
+  int page_number;
+  for(page_number=0; page_number < 4; page_number++){
+    virtual_addr = USERTOP - SHAREDPGSIZE + page_number * PGSIZE;
+
+    pte_t *pte;
+    pte = walkpgdir(pgdir,(void*)virtual_addr, 0);   // pte doesn't exist > equal to 0
+
+    ///// CASE WHERE PROCESS NEEDS TO FREE REFERENCES TO SHARED MEMORY 
+    if (!pte && (*pte & PTE_P)){
+      Schmem.referenceCounts[page_number]--;
+
+       ///// ANOTHER CASE WHERE COMPLETELY DESTROY SHARED MEMORY 
+      // No more processes using this shared page  > destroy s
+      if (Schmem.referenceCounts[page_number] == 0){
+          deallocuvm(pgdir, virtual_addr + PGSIZE, virtual_addr);  
+          kfree((char*)PTE_ADDR(pte));    
+      } else {
+        //// CASE WHERE SHARED MEMORY STILL BEING USED BY ANOTHER PROCESS
+        kfree((char*)PTE_ADDR(pte)); 
+      }
+    }
+  }
+
+
+//// CASE WHERE SHARED MEMORY STILL BEING USED BY ANOTHER PROCESS 
+//// NEED TO CHANGE USERTOP
+  deallocuvm(pgdir, USERTOP-SHAREDPGSIZE, 0);   // freeing the physical pages that the process was using for "ordinary" memory purposes
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P)
       kfree((char*)PTE_ADDR(pgdir[i]));     // freeing physical pages that hold page tables 
   }
   kfree((char*)pgdir);   // freeing physical page that held page directory 
 }
+
+
 
 // Given a parent process's page table, create a copy
 // of it for a child.
@@ -357,6 +392,35 @@ copyuvm(pde_t *pgdir, uint sz)
     if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
       goto bad;
   }
+
+  uint virtual_addr;
+  int page_number;
+  for(page_number=0; page_number < 4; page_number++){
+    virtual_addr = USERTOP - SHAREDPGSIZE + page_number * PGSIZE;
+
+    pte_t *shared_pte;
+     char *shared_mem;
+    shared_pte = walkpgdir(pgdir,(void*)virtual_addr, 0);   // pte doesn't exist > equal to 0
+
+    if (!pte && (*pte & PTE_P)){
+      uint shared_pa;
+
+      //////////////////////////  WRONG HERE 
+
+      shared_pa = PTE_ADDR(*shared_pte);
+      if((shared_mem = kalloc()) == 0)
+        goto bad;
+      memmove(mem, (char*)pa, PGSIZE);
+      if(mappages(d, (void*)i, PGSIZE, PADDR(shared_mem), PTE_W|PTE_U) < 0)
+        goto bad;
+
+       ////////////////////////// //////////////////////////
+
+    }
+  }
+
+
+
   return d;
 
 bad:
@@ -602,6 +666,11 @@ getSharedPagePA(page_number){
 // CASE 3: page_number has already been created by a different process, but another process wants access 
       int updatePageTable;
       updatePageTable = mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PTE_ADDR(virtual_addr), PTE_W|PTE_U);
+
+//TODO--------------------------------------------------------------------------
+   //   if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
+
+      //TODO--------------------------------------------------------------------------
 
       if (updatePageTable == -1){
         return (void*)0;

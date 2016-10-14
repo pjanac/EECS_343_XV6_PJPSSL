@@ -2,7 +2,6 @@
 #define _USER_H_
 
 struct stat;
-struct ProcessInfo;
 
 // system calls
 int fork(void);
@@ -28,7 +27,6 @@ int sleep(int);
 int uptime(void);
 void* shmem_access(int);
 int shmem_count(int); 
-//int getprocs(struct ProcessInfo*);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);
