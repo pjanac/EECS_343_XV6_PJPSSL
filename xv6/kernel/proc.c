@@ -451,6 +451,7 @@ procdump(void)
   }
 }
 
+
 // int
 // getprocs(struct ProcessInfo *table){
 //   int numProcs = 0;
@@ -477,5 +478,26 @@ procdump(void)
 // }
 
 
+void*
+shmem_access(int page_number){
+  if (page_number < 0 || page_number > 3)
+     return (void*)0;
+
+return getSharedPagePA(page_number);
+
+}
+
+
+
+int
+shmem_count(int page_number){
+  if (page_number < 0 || page_number > 3)
+    return -1;
+  // RETURN
+  //returns the number of processes that are currently sharing the shared page specified by the page_number argument.
+  // indicate failure by returning -1
+  // access the reference array
+  return getReferenceCount(page_number);
+}
 
 

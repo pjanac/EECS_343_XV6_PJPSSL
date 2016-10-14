@@ -443,15 +443,123 @@ mappages
 // Locks - need? potentially saved by parent waiting > see test cases 
 
 */
+// void*
+// shmem_access(int page_number){
+//   if (page_number < 0 || page_number > 3)
+//      return (void*)0;
+
+//    uint virtual_addr;
+//   virtual_addr = USERTOP - SHAREDPGSIZE + page_number * PGSIZE;
+
+//    if (Schmem.referenceCounts[page_number] == 0){   // CASE 1: page_number shared memory hasn't been created yet 
+//     char *mem;
+
+//     // this creates PTEs  in physical memory 
+//       mem = kalloc();
+//       if(mem == 0){
+//         cprintf("allocuvm out of memory\n");
+//       //  deallocuvm(pgdir, newsz, oldsz);
+//         return 0;
+//       }
+//       memset(mem, 0, PGSIZE);
+//       mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+//       Schmem.table[page_number] = PADDR(mem);
+//       Schmem.referenceCounts[page_number]++;
+//       return (void*)virtual_addr;
+//   } 
+
+//   // CASE 2: the same process calls shmem_access with the same page_number more than once 
+//     pte_t *pte;
+//     pte = walkpgdir(proc->pgdir,(void*)virtual_addr, 0)   // pte doesn't exist > equal to 0
+
+//     if (!pte && (*pte & PTE_P)){
+//       return (void*)Schmem.table[page_number];
+//     }
+
+
+
+// // if(*pde & PTE_P){
+// //     pgtab = (pte_t*)PTE_ADDR(*pde);
+// //     &pgtab[PTX(va)];
+
+
+
+// //       pde = &(proc->pgdir)[PDX(virtual_addr)];   // WATCH THE SYNTAX HERE!!!!!!!!!!!!!!!!
+// //       if(*pde & PTE_P){  // if the page directory entry exists and the present bit is 1
+// //         //pgtab = (pte_t*)PTE_ADDR(*pde);
+// //         return (void*)Schmem.table[page_number];
+// //       }
+
+// // CASE 3: page_number has already been created by a different process, but another process wants access 
+//       int updatePageTable;
+//       updatePageTable = mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PTE_ADDR(virtual_addr), PTE_W|PTE_U);
+
+//       if (updatePageTable == -1){
+//         return (void*)0;
+//       }
+
+//       Schmem.referenceCounts[page_number]++;
+
+//       return (void*)Schmem.table[page_number];
+  
+
+//     // first check if a process called this syscall twice with the same argument
+//   // return the same virtual address again
+//   // IMPLEMENTATION: Check the process's page directory and page tables 
+//   // Is there a mapping to a shared page in the virtual address space? 
+
+//   // walkpgdir 
+//   // mappages 
+//   // check present bit (last flag of entry)
+//    // must be 1 in page directory and page table entries 
+
+// //***************************************************
+  
+
+//   //uint sz;
+//   //sz = allocuvm(pgdir, virtual_addr, PGSIZE);  // would just return PGSIZE, if working....
+//   // if sz == 0 there was an error 
+//   //***************************************************
+
+//   // map a virtual memory page to the physical address of the physical page
+
+//   // pass our virtual addr to mappages 
+//   //mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)   // returns -1 if fails, 0 if successful
+  
+
+// // increment reference count from 0 to 1, multiple access to this page
+//   // use this address to fill in global array 
+
+//  // mappages(pgdir, virtual_addr, PGSIZE, PADDR(mem),PTE_W|PTE_U); // using correct flags? 
+
+//   // RETURN
+//   //The syscall will return the virtual address of the shared page. 
+//   //If a process calls this syscall twice with the same argument, the syscall should recognize that this process has already mapped this shared page and simply return the virtual address again.
+//   // indicate failure by returning NULL.
+
+//   // return virtual_addr here 
+
+// }
+
+// int
+// shmem_count(int page_number){
+//   if (page_number < 0 || page_number > 3)
+//     return -1;
+//   // RETURN
+//   //returns the number of processes that are currently sharing the shared page specified by the page_number argument.
+//   // indicate failure by returning -1
+//   // access the reference array
+//   return Schmem.referenceCounts[page_number];
+// }
+
 void*
-shmem_access(int page_number){
-  if (page_number < 0 || page_number > 3)
-     return (void*)0;
-
+getSharedPagePA(page_number){
    uint virtual_addr;
-  virtual_addr = USERTOP - SHAREDPGSIZE + page_number * PGSIZE;
+    virtual_addr = USERTOP - SHAREDPGSIZE + page_number * PGSIZE;
+     if (Schmem.referenceCounts[page_number] == 0){   // CASE 1: page_number shared memory hasn't been created yet 
+    
 
-   if (Schmem.referenceCounts[page_number] == 0){   // CASE 1: page_number shared memory hasn't been created yet 
+
     char *mem;
 
     // this creates PTEs  in physical memory 
@@ -465,6 +573,7 @@ shmem_access(int page_number){
       mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PADDR(mem), PTE_W|PTE_U);
       Schmem.table[page_number] = PADDR(mem);
       Schmem.referenceCounts[page_number]++;
+
       return (void*)virtual_addr;
   } 
 
@@ -538,17 +647,13 @@ shmem_access(int page_number){
   // indicate failure by returning NULL.
 
   // return virtual_addr here 
-
 }
 
 int
-shmem_count(int page_number){
-  if (page_number < 0 || page_number > 3)
-    return -1;
-  // RETURN
-  //returns the number of processes that are currently sharing the shared page specified by the page_number argument.
-  // indicate failure by returning -1
-  // access the reference array
+getReferenceCount(page_number){
   return Schmem.referenceCounts[page_number];
 }
+
+
+
 

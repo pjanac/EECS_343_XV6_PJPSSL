@@ -95,7 +95,8 @@ int sys_getprocs(void)
   struct ProcessInfo *table;
   if(argptr(0, (void*)&table, NPROC * sizeof(struct ProcessInfo)) < 0)
     return -1;
-  return getprocs(table);
+  //return getprocs(table);
+  return 0;
 }
 
 int sys_shmem_access(void){
