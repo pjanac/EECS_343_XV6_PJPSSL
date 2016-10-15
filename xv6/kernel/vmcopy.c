@@ -15,7 +15,7 @@ struct Stable{
   uint table[4];
   int referenceCounts[4];
 };
-static struct Stable Schmem;
+static struct Stable Schmem = {.table = {0} , .referenceCounts = {0}};
 
 // Allocate one page table for the machine for the kernel address
 // space for scheduler processes.
@@ -285,6 +285,7 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 }
 
 
+// TODO !!!!!!!!!!!!!!
 /*int
 deallocUserSharedPages(pde_t *pgdir, uint oldsz, uint newsz)
 {
@@ -351,7 +352,7 @@ freevm(pde_t *pgdir)
 
 //// CASE WHERE SHARED MEMORY STILL BEING USED BY ANOTHER PROCESS 
 //// NEED TO CHANGE USERTOP
-  deallocuvm(pgdir, USERTOP - PGSIZE, 0);   // freeing the physical pages that the process was using for "ordinary" memory purposes
+  deallocuvm(pgdir, USERTOP-PGSIZE, 0);   // freeing the physical pages that the process was using for "ordinary" memory purposes
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P)
       kfree((char*)PTE_ADDR(pgdir[i]));     // freeing physical pages that hold page tables 
@@ -388,19 +389,17 @@ copyuvm(pde_t *pgdir, uint sz)
   }
 
   uint virtual_addr;
-  int page_number;
- uint shared_pa;
+  int page_number = 0 ;
+  uint shared_pa = 0;
   for(page_number=0; page_number < 4; page_number++){
     virtual_addr = USERTOP - SHAREDPGSIZE + page_number * PGSIZE;
+
     pte_t *shared_pte;
     shared_pte = walkpgdir(pgdir,(void*)virtual_addr, 0);   // pte doesn't exist > equal to 0
-    shared_pa = PTE_ADDR(*shared_pte);
+
     if (*shared_pte & PTE_P){
-       if((mem = kalloc()) == 0)
-        goto bad;
-    	memmove(mem, (char*)shared_pa, PGSIZE);
-	if(mappages(d, (void*)virtual_addr,PGSIZE,PADDR(mem), PTE_W|PTE_U) < 0)
-          goto bad;
+	shared_pa = PTE_ADDR(*shared_pte);
+	mappages(d, (void*)virtual_addr, PGSIZE, shared_pa, PTE_W|PTE_U);
     }
   }
 
@@ -408,7 +407,7 @@ copyuvm(pde_t *pgdir, uint sz)
 
   return d;
 
-  bad:
+bad:
   freevm(d);
   return 0;
 }
@@ -605,53 +604,49 @@ void*
 getSharedPagePA(page_number){
    uint virtual_addr;
     virtual_addr = USERTOP - SHAREDPGSIZE + page_number * PGSIZE;
-     // pte_t *pte;
-     // uint PA;
+     if (Schmem.referenceCounts[page_number] == 0){// CASE 1: page_number shared memory hasn't been created yet 
+    
 
-     if (Schmem.referenceCounts[page_number] == 0){ 
-                                                             // CASE 1: page_number shared memory hasn't been created yet 
-     char *mem;
+
+    char *mem;
+
     // this creates PTEs  in physical memory 
       mem = kalloc();
       if(mem == 0){
         cprintf("allocuvm out of memory\n");
+      //  deallocuvm(pgdir, newsz, oldsz);
         return 0;
       }
       memset(mem, 0, PGSIZE);
       mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PADDR(mem), PTE_W|PTE_U);
-     Schmem.table[page_number] = PADDR(mem);
-//      if (Schmem.table[page_number] !=0){
+      Schmem.table[page_number] = PADDR(mem);
       Schmem.referenceCounts[page_number]++;
-  //    }
+
       return (void*)virtual_addr;
   } 
 
   // CASE 2: the same process calls shmem_access with the same page_number more than once 
-//else{
-    
-
-      pte_t *pte;
-      uint PA; 
+    pte_t *pte;
+	uint PA;
     pte = walkpgdir(proc->pgdir,(void*)virtual_addr, 0);   // pte doesn't exist > equal to 0
      PA = PTE_ADDR(*pte);
     if (*pte & PTE_P){
-      return (void*)virtual_addr;
+      return (void*)Schmem.table[page_number];
     }
-//}
 
 
   // CASE 3: page_number has already been created by a different process, but another process wants access 
-    //  int updatePageTable = 0;
-    //  updatePageTable = mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PA, PTE_W|PTE_U);
+      int updatePageTable = 0;
+      updatePageTable = mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PA, PTE_W|PTE_U);
 
 //TODO--------------------------------------------------------------------------
    //   if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
 
       //TODO--------------------------------------------------------------------------
 
- //     if (updatePageTable == -1){
-  //      return (void*)0;
-   //   }
+      if (updatePageTable == -1){
+        return (void*)0;
+      }
 
       Schmem.referenceCounts[page_number]++;
 
