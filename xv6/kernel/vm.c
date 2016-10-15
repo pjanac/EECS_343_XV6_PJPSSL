@@ -343,13 +343,13 @@ freevm(pde_t *pgdir)
        ///// ANOTHER CASE WHERE COMPLETELY DESTROY SHARED MEMORY 
       // No more processes using this shared page  > destroy s
       if (Schmem.referenceCounts[page_number] == 0){  
-          kfree((char*)PTE_ADDR(*pte));    
+          kfree((char*)Schmem.table[page_number]);     // free physical memory of the actual shared page 
       }
     }
   }
 
 
-//// CASE WHERE SHARED MEMORY STILL BEING USED BY ANOTHER PROCESS 
+//// CASE CONT WHERE SHARED MEMORY STILL BEING USED BY ANOTHER PROCESS/ NOT USING SHARED PAGES
 //// NEED TO CHANGE USERTOP
   deallocuvm(pgdir, USERTOP - PGSIZE, 0);   // freeing the physical pages that the process was using for "ordinary" memory purposes
   for(i = 0; i < NPDENTRIES; i++){
@@ -627,9 +627,6 @@ getSharedPagePA(page_number){
   } 
 
   // CASE 2: the same process calls shmem_access with the same page_number more than once 
-//else{
-    
-
       pte_t *pte;
       uint PA; 
     pte = walkpgdir(proc->pgdir,(void*)virtual_addr, 0);   // pte doesn't exist > equal to 0
@@ -637,27 +634,18 @@ getSharedPagePA(page_number){
     if (*pte & PTE_P){
       return (void*)virtual_addr;
     }
-//}
-
 
   // CASE 3: page_number has already been created by a different process, but another process wants access 
-    //  int updatePageTable = 0;
-    //  updatePageTable = mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, PA, PTE_W|PTE_U);
+      int updatePageTable;
+      updatePageTable = mappages(proc->pgdir, (char*)virtual_addr, PGSIZE, Schmem.table[page_number], PTE_W|PTE_U);
 
-//TODO--------------------------------------------------------------------------
-   //   if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
-
-      //TODO--------------------------------------------------------------------------
-
- //     if (updatePageTable == -1){
-  //      return (void*)0;
-   //   }
+      if (updatePageTable < 0){
+        return (void*)0;
+      }
 
       Schmem.referenceCounts[page_number]++;
 
       return (void*)Schmem.table[page_number];
-  
-
 }
 
 int
