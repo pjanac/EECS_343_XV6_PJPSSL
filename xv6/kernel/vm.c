@@ -380,7 +380,7 @@ copyuvm(pde_t *pgdir, uint sz)
   if((d = setupkvm()) == 0)
     return 0;
   for(i = PGSIZE; i < sz +PGSIZE; i += PGSIZE){
-   //  if ((a < (USERTOP - PGSIZE - 4 * PGSIZE)) && (a > (USERTOP - PGSIZE ))){
+    if ((i > (USERTOP  - PGSIZE - 4 * PGSIZE)) && (i < (USERTOP - PGSIZE  ))){
     if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
@@ -393,10 +393,10 @@ copyuvm(pde_t *pgdir, uint sz)
        goto bad;
      
     
- // }
+  }
 }
-  return d;
- // copyuvmSharedPages (d);
+ // return d;
+ copyuvmSharedPages (d);
 //  return d;
 
 bad:
@@ -404,7 +404,7 @@ bad:
   return 0;
 }
 
-void
+void*
 copyuvmSharedPages(pde_t *pgdir)
 {
   //pde_t *d;
@@ -419,19 +419,21 @@ copyuvmSharedPages(pde_t *pgdir)
   for(page_number= 0; page_number < 4; page_number ++){
     virtual_addr = USERTOP - PGSIZE - page_number * PGSIZE;
     if((pte = walkpgdir(pgdir, (void*)virtual_addr, 0)) == 0)
-      panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P)) {
-      panic("copyuvm: page not present");
-    
-      Schmem.referenceCounts[page_number]++;
+     // panic("copyuvm: pte should exist");
+    if(*pte & PTE_P) {
+      //panic("copyuvm: page not .................. present");
+      return (pgdir);
+ //     Schmem.referenceCounts[page_number]++;
     }
-//    if((mem = kalloc()) == 0)
+
+Schmem.referenceCounts[page_number]++;
+//   if((mem = kalloc()) == 0)
   //    goto bad;
  //   memmove(mem, (char*)pa, PGSIZE);
    // if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
   //    goto bad;
   }
-
+return (pgdir);
 }
   //return d;
 
