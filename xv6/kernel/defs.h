@@ -172,6 +172,9 @@ void* 			shmem_access(int);
 int 			shmem_count(int); 
 int             getReferenceCount(int);
 void*           getSharedPagePA(int);
+void*          allocuvmSharedPages(uint* );
+void           deallocuvmSharedPages(uint* );
+void           copyuvmSharedPages(uint* );
 
 // tests
 // void            whenRequestingSharedMemory_ValidAddressIsReturned(void);
