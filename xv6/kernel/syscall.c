@@ -17,7 +17,7 @@
 int
 fetchint(struct proc *p, uint addr, int *ip)
 {
-  if(addr >= p->sz + PGSIZE || addr+4 > p->sz + PGSIZE  )
+  if(addr >= p->sz + PGSIZE || addr+4 > p->sz + PGSIZE || addr <PGSIZE )
     return -1;
   *ip = *(int*)(addr);
   return 0;

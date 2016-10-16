@@ -174,7 +174,7 @@ int             getReferenceCount(int);
 void*           getSharedPagePA(int);
 void*          allocuvmSharedPages(uint* );
 void           deallocuvmSharedPages(uint* );
-void*           copyuvmSharedPages(uint* );
+pde_t*           copyuvmSharedPages(uint* );
 
 // tests
 // void            whenRequestingSharedMemory_ValidAddressIsReturned(void);

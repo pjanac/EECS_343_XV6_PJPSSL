@@ -277,14 +277,15 @@ allocuvmSharedPages(pde_t *pgdir)
     if(mem == 0){
       cprintf("allocuvm out of memory\n");
      // deallocuvmSharedPages(pgdir, newsz, oldsz);
-      return (void *)0;
+     // return (void *)0;
     }
 
-    if ( Schmem.mapped [page_number] == 0 ){
-     memset(mem, 0, PGSIZE);
-     mappages(pgdir, (char*)virtual_addr, PGSIZE, PADDR(mem), PTE_W|PTE_U);
-      Schmem.mapped[page_number]++;
-      Schmem.table[page_number] = PADDR(mem);
+    if (Schmem.mapped [page_number] == 0 ){
+        memset(mem, 0, PGSIZE);
+       mappages(pgdir, (char*)virtual_addr, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+       Schmem.referenceCounts[page_number]++;
+       Schmem.mapped [page_number] = 1;
+       Schmem.table[page_number] = PADDR(mem);
 //      return (void *)virtual_addr;
       }
 //     return (void *)0;
@@ -343,6 +344,7 @@ deallocuvmSharedPages(pde_t *pgdir)
         panic("kfree");
       kfree((char*)pa);
       Schmem.mapped[a] = 0;
+      Schmem.referenceCounts[a]--;
       *pte = 0;
     }
   }
@@ -371,7 +373,7 @@ freevm(pde_t *pgdir)
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
 {
-  pde_t *d;
+  pde_t *d, *m;
   pte_t *pte;
   uint pa, i;
   char *mem;
@@ -380,7 +382,7 @@ copyuvm(pde_t *pgdir, uint sz)
   if((d = setupkvm()) == 0)
     return 0;
   for(i = PGSIZE; i < sz +PGSIZE; i += PGSIZE){
-    if ((i > (USERTOP  - PGSIZE - 4 * PGSIZE)) && (i < (USERTOP - PGSIZE  ))){
+   if (!((i >= (USERTOP - PGSIZE - (4* PGSIZE))) && (i < USERTOP -PGSIZE))){
     if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
@@ -395,8 +397,9 @@ copyuvm(pde_t *pgdir, uint sz)
     
   }
 }
- // return d;
- copyuvmSharedPages (d);
+  m = copyuvmSharedPages(d);
+  return(m);
+ //copyuvmSharedPages (d);
 //  return d;
 
 bad:
@@ -404,11 +407,11 @@ bad:
   return 0;
 }
 
-void*
+pde_t*
 copyuvmSharedPages(pde_t *pgdir)
 {
   //pde_t *d;
-  pte_t *pte;
+ pte_t *pte;
  // uint pa, i;
   //char *mem;
    int page_number;
@@ -418,15 +421,15 @@ copyuvmSharedPages(pde_t *pgdir)
 
   for(page_number= 0; page_number < 4; page_number ++){
     virtual_addr = USERTOP - PGSIZE - page_number * PGSIZE;
-    if((pte = walkpgdir(pgdir, (void*)virtual_addr, 0)) == 0)
-     // panic("copyuvm: pte should exist");
+ //   if (Schmem.mapped[page_number] != 0){
+    pte = walkpgdir(pgdir, (void*)virtual_addr, 0);
     if(*pte & PTE_P) {
-      //panic("copyuvm: page not .................. present");
-      return (pgdir);
- //     Schmem.referenceCounts[page_number]++;
-    }
 
-Schmem.referenceCounts[page_number]++;
+    Schmem.referenceCounts[page_number]++;
+    //Schmem.mapped[page_number] = 1;
+ }//}
+
+//Schmem.referenceCounts[page_number]++;
 //   if((mem = kalloc()) == 0)
   //    goto bad;
  //   memmove(mem, (char*)pa, PGSIZE);
@@ -493,26 +496,33 @@ getSharedPagePA(page_number){
    uint virtual_addr;
     virtual_addr = USERTOP - PGSIZE - page_number * PGSIZE;
     pte_t *pte;
-     uint PA;
+  //   uint PA;
 
      if (Schmem.referenceCounts[page_number] == 0){
     //  if (Schmem.mapped[page_number] == 0){                                                       // CASE 1: page_number shared memory hasn't been created yet 
    pte = allocuvmSharedPages(proc->pgdir);
-      Schmem.referenceCounts[page_number]++;
+    
+ // if (*pte & PTE_P){
+ // Schmem.referenceCounts[page_number]++;
+    return (void*)virtual_addr;
 
     }
   //   if (Schmem.table[page_number] !=0){
-      return (void*)virtual_addr;
+    //  return (void*)virtual_addr;
  // }
 
-     pte = walkpgdir(proc->pgdir,(void*)virtual_addr, 0);   // pte doesn't exist > equal to 0
-     PA = PTE_ADDR(*pte);
+ //  if (Schmem.mapped[page_number] != 0) 
+	 pte = walkpgdir(proc->pgdir,(void*)virtual_addr, 0);   // pte doesn't exist > equal to 0
+ //        PA = PTE_ADDR(*pte);
      if (*pte & PTE_P){
+     // Schmem.referenceCounts[page_number]++;
       return (void*)virtual_addr;
-    }
-
+   
+   
   }
-
+ //Schmem.referenceCounts[page_number]++;
+ return (void*)virtual_addr;
+}
 
 int
 getReferenceCount(page_number){
