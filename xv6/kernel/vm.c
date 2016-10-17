@@ -257,9 +257,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   return newsz;
 }
 
-
-
-void*
+/*void*
 allocuvmSharedPages(pde_t *pgdir)
 {
   char *mem;
@@ -292,7 +290,40 @@ allocuvmSharedPages(pde_t *pgdir)
     }
 return (void *)virtual_addr;
 
+  }*/
+
+void*
+allocuvmSharedPages_init(pde_t *pgdir, int page_number)
+{
+  char *mem;
+  uint virtual_addr = 0;
+
+  virtual_addr = USERTOP - PGSIZE - page_number* PGSIZE;
+  mem = kalloc();
+
+  if(mem == 0){
+    cprintf("allocuvm out of memory\n");
   }
+
+  if (Schmem.mapped [page_number] == 0 ) {
+    memset(mem, 0, PGSIZE);
+    mappages(pgdir, (char*)virtual_addr, PGSIZE, PADDR(mem), PTE_W|PTE_U);
+    Schmem.referenceCounts[page_number]++;
+    Schmem.mapped [page_number] = 1;
+    Schmem.table[page_number] = PADDR(mem);
+  }
+      return (void *)virtual_addr;
+}
+
+void*
+allocuvmSharedPages_increment(pde_t *pgdir, int page_number)
+{
+  uint virtual_addr = 0;
+  virtual_addr = USERTOP - PGSIZE - page_number* PGSIZE;
+  mappages(pgdir, (char*)virtual_addr, PGSIZE, Schmem.table[page_number], PTE_W|PTE_U);
+  Schmem.referenceCounts[page_number]++;
+  return (void *)virtual_addr;
+}
 
 
 // Deallocate user pages to bring the process size from oldsz to
@@ -330,22 +361,24 @@ deallocuvmSharedPages(pde_t *pgdir)
   pte_t *pte;
   uint a, pa;
   char * virtual_addr;
-  //if(newsz >= oldsz)
-    //return oldsz;
 
-  //a = USERTOP - PGSIZE - 4*PGSIZE;
-  for(a=0; a  < 4; a ++){
-    
+  for(a = 0; a < 4; a ++) {
     virtual_addr = (char*) (USERTOP - PGSIZE - a * PGSIZE);
     pte = walkpgdir(pgdir, virtual_addr, 0);
-    if(pte && (*pte & PTE_P) != 0){
+    if(pte && (*pte & PTE_P) != 0) {
       pa = PTE_ADDR(*pte);
-      if(pa == 0)
+      if(pa == 0) {
         panic("kfree");
-      kfree((char*)pa);
-      Schmem.mapped[a] = 0;
+      }
+      // process no longer using page, decrement reference count
       Schmem.referenceCounts[a]--;
-      *pte = 0;
+
+      // if no processes sharing page, kill page
+      if (Schmem.referenceCounts[a] == 0) {
+        kfree((char*)pa);
+        Schmem.mapped[a] = 0;
+        *pte = 0;
+      }
     }
   }
 }
@@ -359,7 +392,7 @@ freevm(pde_t *pgdir)
   if(pgdir == 0)
     panic("freevm: no pgdir");
   deallocuvm(pgdir, USERTOP - PGSIZE - 4 * PGSIZE , 0);
- deallocuvmSharedPages(pgdir);
+  deallocuvmSharedPages(pgdir);
 
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P)
@@ -393,8 +426,6 @@ copyuvm(pde_t *pgdir, uint sz)
     memmove(mem, (char*)pa, PGSIZE);
     if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
        goto bad;
-     
-    
   }
 }
   m = copyuvmSharedPages(d);
@@ -424,9 +455,7 @@ copyuvmSharedPages(pde_t *pgdir)
    if (Schmem.mapped[page_number] != 0){
     pte = walkpgdir(pgdir, (void*)virtual_addr, 0);
     if(*pte & PTE_P) {
-
     Schmem.referenceCounts[page_number]++;
-    //Schmem.mapped[page_number] = 1;
  }}
 
 //Schmem.referenceCounts[page_number]++;
@@ -496,32 +525,22 @@ getSharedPagePA(page_number){
    uint virtual_addr;
     virtual_addr = USERTOP - PGSIZE - page_number * PGSIZE;
     pte_t *pte;
-  //   uint PA;
 
-     if (Schmem.referenceCounts[page_number] == 0){
-    //  if (Schmem.mapped[page_number] == 0){                                                       // CASE 1: page_number shared memory hasn't been created yet 
-   pte = allocuvmSharedPages(proc->pgdir);
-    
- // if (*pte & PTE_P){
- // Schmem.referenceCounts[page_number]++;
-    return (void*)virtual_addr;
-
-    }
-  //   if (Schmem.table[page_number] !=0){
-    //  return (void*)virtual_addr;
- // }
-
- //  if (Schmem.mapped[page_number] != 0) 
-	 pte = walkpgdir(proc->pgdir,(void*)virtual_addr, 0);   // pte doesn't exist > equal to 0
- //        PA = PTE_ADDR(*pte);
-     if (*pte & PTE_P){
-     // Schmem.referenceCounts[page_number]++;
+    if (Schmem.referenceCounts[page_number] == 0) {
+      // CASE 1: page_number shared memory hasn't been created yet 
+      pte = allocuvmSharedPages_init(proc->pgdir, page_number);
       return (void*)virtual_addr;
-   
-   
-  }
- //Schmem.referenceCounts[page_number]++;
- return (void*)virtual_addr;
+    }
+
+    // CASE 2 Process calls shmem_acess(page) more than once.
+    pte = walkpgdir(proc->pgdir,(void*)virtual_addr, 0);   // pte doesn't exist > equal to 0
+    if (*pte & PTE_P) {
+      return (void*)virtual_addr;
+    }
+
+    // Case 3 Page already shared, don't call kalloc. Just map virtual address to physical address of page for process.
+    pte = allocuvmSharedPages_increment(proc->pgdir, page_number);
+    return (void*)virtual_addr;
 }
 
 int

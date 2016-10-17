@@ -451,7 +451,7 @@ procdump(void)
   }
 }
 
-
+// NEEDS TO RETURN NULL IF FAILURE!!!!
 void*
 shmem_access(int page_number){
   if (page_number < 0 || page_number > 3)
