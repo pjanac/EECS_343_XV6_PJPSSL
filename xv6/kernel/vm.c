@@ -421,13 +421,13 @@ copyuvmSharedPages(pde_t *pgdir)
 
   for(page_number= 0; page_number < 4; page_number ++){
     virtual_addr = USERTOP - PGSIZE - page_number * PGSIZE;
- //   if (Schmem.mapped[page_number] != 0){
+   if (Schmem.mapped[page_number] != 0){
     pte = walkpgdir(pgdir, (void*)virtual_addr, 0);
     if(*pte & PTE_P) {
 
     Schmem.referenceCounts[page_number]++;
     //Schmem.mapped[page_number] = 1;
- }//}
+ }}
 
 //Schmem.referenceCounts[page_number]++;
 //   if((mem = kalloc()) == 0)
